@@ -1,6 +1,6 @@
 require 'bundler/setup'
 require 'minitest/autorun'
-require 'mocha'
+require 'mocha/setup'
 require 'omniauth/strategies/facebook'
 
 OmniAuth.config.test_mode = true
@@ -36,6 +36,7 @@ class StrategyTestCase < TestCase
     @request.stubs(:params).returns({})
     @request.stubs(:cookies).returns({})
     @request.stubs(:env).returns({})
+    @request.stubs(:ssl?).returns(false)
 
     @client_id = '123'
     @client_secret = '53cr3tz'

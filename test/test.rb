@@ -13,7 +13,7 @@ class ClientTest < StrategyTestCase
   end
 
   test 'has correct authorize url' do
-    assert_equal '/oauth/authorize', strategy.client.options[:authorize_url]
+    assert_equal 'https://www.facebook.com/dialog/oauth', strategy.client.options[:authorize_url]
   end
 
   test 'has correct token url' do
@@ -107,14 +107,27 @@ class InfoTest < StrategyTestCase
     @options = { :secure_image_url => true }
     raw_info = { 'name' => 'Fred Smith', 'id' => '321' }
     strategy.stubs(:raw_info).returns(raw_info)
-    assert_equal 'https://graph.facebook.com/321/picture?type=square', strategy.info['image']
+    assert_equal 'https://graph.facebook.com/321/picture', strategy.info['image']
   end
 
-  test 'returns the image size specified in the `image_size` option' do
+  test 'returns the image with size specified in the `image_size` option' do
     @options = { :image_size => 'normal' }
     raw_info = { 'name' => 'Fred Smith', 'id' => '321' }
     strategy.stubs(:raw_info).returns(raw_info)
     assert_equal 'http://graph.facebook.com/321/picture?type=normal', strategy.info['image']
+  end
+
+  test 'returns the image with width and height specified in the `image_size` option' do
+    @options = { :image_size => { :width => 123, :height => 987 } }
+    raw_info = { 'name' => 'Fred Smith', 'id' => '321' }
+    strategy.stubs(:raw_info).returns(raw_info)
+    image_url = strategy.info['image']
+    path, query = image_url.split("?")
+    query_params = Hash[*query.split("&").map {|pair| pair.split("=") }.flatten]
+
+    assert_equal 'http://graph.facebook.com/321/picture', path
+    assert_equal '123', query_params['width']
+    assert_equal '987', query_params['height']
   end
 end
 
@@ -159,9 +172,9 @@ class InfoTestOptionalDataPresent < StrategyTestCase
     assert_equal 'I am great', strategy.info['description']
   end
 
-  test 'returns the square format facebook avatar url' do
+  test 'returns the facebook avatar url' do
     @raw_info['id'] = '321'
-    assert_equal 'http://graph.facebook.com/321/picture?type=square', strategy.info['image']
+    assert_equal 'http://graph.facebook.com/321/picture', strategy.info['image']
   end
 
   test 'returns the Facebook link as the Facebook url' do
@@ -243,7 +256,7 @@ class RawInfoTest < StrategyTestCase
 
   test 'performs a GET to https://graph.facebook.com/me' do
     strategy.stubs(:access_token).returns(@access_token)
-    @access_token.expects(:get).with('/me').returns(stub_everything('OAuth2::Response'))
+    @access_token.expects(:get).with('/me', {}).returns(stub_everything('OAuth2::Response'))
     strategy.raw_info
   end
 
@@ -254,7 +267,7 @@ class RawInfoTest < StrategyTestCase
     raw_response.stubs(:status).returns(200)
     raw_response.stubs(:headers).returns({'Content-Type' => 'application/json' })
     oauth2_response = OAuth2::Response.new(raw_response)
-    @access_token.stubs(:get).with('/me').returns(oauth2_response)
+    @access_token.stubs(:get).with('/me', {}).returns(oauth2_response)
     assert_kind_of Hash, strategy.raw_info
     assert_equal 'thar', strategy.raw_info['ohai']
   end
@@ -262,7 +275,7 @@ class RawInfoTest < StrategyTestCase
   test 'returns an empty hash when the response is false' do
     strategy.stubs(:access_token).returns(@access_token)
     oauth2_response = stub('OAuth2::Response', :parsed => false)
-    @access_token.stubs(:get).with('/me').returns(oauth2_response)
+    @access_token.stubs(:get).with('/me', {}).returns(oauth2_response)
     assert_kind_of Hash, strategy.raw_info
   end
 
