@@ -53,13 +53,11 @@ module OmniAuth
       end
 
       def raw_info
-        @raw_info ||= if (r_info = access_token.get('/me').parsed).is_a? String
-                        JSON.parse(Zlib::GzipReader.new(StringIO.new(r_info)).read)
-                      elsif r_info.is_a? Hash
-                        r_info
-                      else
-                        {}
-                      end
+        if RUBY_VERSION == '2.1.5'
+          @raw_info ||= JSON.parse(Zlib::GzipReader.new(StringIO.new(access_token.get('/me').parsed)).read) || {}
+        else
+          @raw_info ||= access_token.get('/me').parsed || {}
+        end
       end
 
       def build_access_token
@@ -225,4 +223,3 @@ module OmniAuth
     end
   end
 end
-
