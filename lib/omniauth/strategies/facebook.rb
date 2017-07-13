@@ -53,17 +53,13 @@ module OmniAuth
       end
 
       def raw_info
-        if RUBY_VERSION == '2.1.5'
-          @raw_info ||= JSON.parse(Zlib::GzipReader.new(StringIO.new(access_token.get('/me').parsed)).read) || {}
-        else
-          @raw_info ||= access_token.get('/me').parsed || {}
-        end
+        @raw_info ||= access_token.get('/me').parsed || {}
       end
 
       def build_access_token
         if access_token = request.params["access_token"]
           ::OAuth2::AccessToken.from_hash(
-            client,
+            client, 
             {"access_token" => access_token}.update(access_token_options)
           )
         elsif signed_request_contains_access_token?
