@@ -55,7 +55,15 @@ module OmniAuth
       end
 
       def info_options
-        params = {appsecret_proof: appsecret_proof}
+        params = {}
+
+        if @legacy_canvas_flow
+          # in legacy canvas flow, I think that the app token the iOS app passes is not from the same
+          #  app so this proof fails
+        else
+          params = {appsecret_proof: appsecret_proof}
+        end
+
         params.merge!({fields: (options[:info_fields] || 'name,email')})
         params.merge!({locale: options[:locale]}) if options[:locale]
 
@@ -107,8 +115,13 @@ module OmniAuth
       protected
 
       def build_access_token
-        super.tap do |token|
-          token.options.merge!(access_token_options)
+        # access_token Canvas flow for old apps
+        if access_token_param = request.params["access_token"]
+          @legacy_canvas_flow = true
+          ::OAuth2::AccessToken.from_hash(client,{"access_token" => access_token_param}.update(access_token_options))
+        else
+          # regular flow with "code" param
+          super
         end
       end
 
@@ -143,6 +156,9 @@ module OmniAuth
             @authorization_code_from_signed_request_in_cookie = false
             options.provider_ignores_state = original_provider_ignores_state
           end
+        elsif request.params["access_token"].present?
+          # we already have access_token so we move on
+          yield
         else
           raise NoAuthorizationCodeError, 'must pass either a `code` (via URL or by an `fbsr_XXX` signed request cookie)'
         end
